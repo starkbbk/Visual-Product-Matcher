@@ -1,0 +1,19 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root{
+  --card: rgba(255,255,255,0.06);
+  --stroke: rgba(255,255,255,0.15);
+}
+
+html, body, #root { height: 100%; }
+body {
+  @apply bg-slate-950 text-slate-100;
+}
+.card {
+  background: var(--card);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--stroke);
+  @apply rounded-2xl shadow;
+}
