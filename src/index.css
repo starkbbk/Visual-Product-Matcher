@@ -1,0 +1,65 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ---------- Frosted glass primitives ---------- */
+@layer components {
+  .glass {
+    @apply backdrop-blur-2xl backdrop-saturate-150 bg-white/10 border border-white/20
+           shadow-xl shadow-black/30 rounded-2xl;
+  }
+  .glass-strong {
+    @apply backdrop-blur-3xl backdrop-saturate-200 bg-white/15 border border-white/25
+           shadow-2xl shadow-black/40 rounded-3xl;
+  }
+  .btn-glass {
+    @apply glass px-4 py-2 text-slate-900 font-semibold bg-white/70 hover:bg-white/80
+           active:scale-[0.98] transition;
+  }
+  .switch {
+    @apply appearance-none w-11 h-6 rounded-full bg-white/20 border border-white/20 relative cursor-pointer
+           transition-all outline-none;
+  }
+  .switch:checked {
+    @apply bg-white/60;
+  }
+  .switch:checked::after {
+    left: 22px;
+  }
+  .switch::after {
+    content: "";
+    @apply absolute top-[3px] left-[3px] w-5 h-5 rounded-full bg-white shadow-md transition-all;
+  }
+}
+
+/* ---------- iOS-ish aurora background ---------- */
+.bg-aurora {
+  --c1: 210 16% 12%;
+  --c2: 222 47% 11%;
+  --c3: 220 60% 14%;
+  background:
+    radial-gradient(60rem 60rem at 80% -10%, hsl(258 92% 66% / .35), transparent 60%),
+    radial-gradient(42rem 42rem at 10% 10%,  hsl(182 78% 72% / .35), transparent 60%),
+    radial-gradient(36rem 36rem at 90% 70%,  hsl(332 85% 65% / .35), transparent 60%),
+    linear-gradient(to bottom right, hsl(var(--c1)), hsl(var(--c2)) 40%, hsl(var(--c3)));
+  position: relative;
+  overflow: hidden;
+}
+.bg-aurora::after {
+  /* soft film grain */
+  content: "";
+  position: absolute; inset: 0;
+  background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIW2P8z8DwHwAFqgJc1g1n1wAAAABJRU5ErkJggg==");
+  opacity: .25;
+  mix-blend-mode: overlay;
+  pointer-events: none;
+}
+
+/* subtle card hover */
+.card-hover {
+  @apply transition will-change-transform hover:translate-y-[-2px] hover:shadow-2xl hover:shadow-black/40;
+}
+
+/* tiny progress bar */
+.progress-track { @apply w-full h-2 rounded-full bg-white/10; }
+.progress-fill  { @apply h-2 rounded-full bg-white/70; }

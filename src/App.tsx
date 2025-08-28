@@ -1,7 +1,7 @@
-// src/App.tsx
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import Uploader from './components/Uploader'
 import ProductCard from './components/ProductCard'
+import Snowfall from './components/Snowfall'
 import { PRODUCTS, Product } from './data/products'
 import { classifyImage, detectAndCrop, imageToEmbedding } from './lib/mobilenet'
 import { clipImageEmbedding } from './lib/clip'
@@ -9,100 +9,131 @@ import { cosineSimilarity } from './lib/similarity'
 
 type Scored = Product & { score: number }
 
-function proxied(url: string) {
+const DEFAULT_TITLE = 'Visual Product Matcher'
+
+const PROXY = 'https://images.weserv.nl/?url='
+const SAFE_HOSTS = new Set(['upload.wikimedia.org', 'picsum.photos', 'images.unsplash.com', 'i.imgur.com'])
+
+function shouldProxy(u: string) {
   try {
-    const u = new URL(url)
-    if (u.origin === window.location.origin) return url
-    const hostless = url.replace(/^https?:\/\//, '')
-    return `https://images.weserv.nl/?url=${encodeURIComponent(hostless)}`
-  } catch {
-    return url
+    const url = new URL(u)
+    if (url.origin === window.location.origin) return false
+    if (SAFE_HOSTS.has(url.host)) return false
+    return true
+  } catch { return false }
+}
+function proxyUrl(u: string) {
+  const hostless = u.replace(/^https?:\/\//, '')
+  return `${PROXY}${encodeURIComponent(hostless)}`
+}
+async function robustEmbed(img: HTMLImageElement) {
+  try { return await clipImageEmbedding(img) } catch { return await imageToEmbedding(img) }
+}
+function loadImageFromSrc(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.onload = () => resolve(img)
+    img.onerror = () => reject(new Error('img load failed'))
+    img.src = src
+  })
+}
+async function loadCatalogImage(url: string) {
+  try { return await loadImageFromSrc(url) }
+  catch {
+    if (shouldProxy(url)) return await loadImageFromSrc(proxyUrl(url))
+    throw new Error('catalog image load failed: ' + url)
   }
 }
-
-async function robustEmbed(img: HTMLImageElement) {
-  // Prefer CLIP; fallback to MobileNet if CLIP fails (offline, etc.)
-  try {
-    return await clipImageEmbedding(img)
-  } catch (e) {
-    console.warn('CLIP failed, falling back to MobileNet embeddings:', e)
-    return await imageToEmbedding(img)
+async function fetchToObjectURL(rawUrl: string): Promise<string> {
+  const tryFetch = async (url: string) => {
+    const res = await fetch(url, { mode: 'cors', referrerPolicy: 'no-referrer' })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const blob = await res.blob()
+    return URL.createObjectURL(blob)
+  }
+  try { return await tryFetch(rawUrl) }
+  catch (e) {
+    if (shouldProxy(rawUrl)) return await tryFetch(proxyUrl(rawUrl))
+    throw e
   }
 }
 
 export default function App() {
-  const [queryUrl, setQueryUrl] = useState<string | null>(null)
+  const [displayQueryUrl, setDisplayQueryUrl] = useState<string | null>(null)
   const [queryImgLoaded, setQueryImgLoaded] = useState(false)
   const [queryEmbed, setQueryEmbed] = useState<Float32Array | null>(null)
-
-  const [embeds, setEmbeds] = useState<(Float32Array | null)[]>(
-    Array(PRODUCTS.length).fill(null)
-  )
-  const [labels, setLabels] = useState<string[][]>(Array(PRODUCTS.length).fill([]))
   const [queryLabels, setQueryLabels] = useState<string[]>([])
+
+  const [embeds, setEmbeds] = useState<(Float32Array | null)[]>(Array(PRODUCTS.length).fill(null))
+  const [labels, setLabels] = useState<string[][]>(Array(PRODUCTS.length).fill([]))
+  const hasEmbeds = embeds.some(Boolean)
 
   const [progress, setProgress] = useState(0)
   const [status, setStatus] = useState('Load or paste an image to start')
+  const [error, setError] = useState<string | null>(null)
   const [minScore, setMinScore] = useState(0.25)
   const [topK, setTopK] = useState(12)
   const [category, setCategory] = useState<string>('All')
   const [preferQueryClass, setPreferQueryClass] = useState(true)
   const [onlySameClass, setOnlySameClass] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
   const imgRef = useRef<HTMLImageElement>(null)
+  const lastBlobURL = useRef<string | null>(null)
 
-  const hasEmbeds = embeds.some((e) => !!e)
+  useEffect(() => { document.title = DEFAULT_TITLE }, [])
 
   async function computeCatalogEmbeddings() {
     setStatus('Computing product embeddings...')
     setProgress(0)
-    const out: (Float32Array | null)[] = [...embeds]
-    const outLabels: string[][] = [...labels]
+    const out = [...embeds]
+    const outLabels = [...labels]
     let done = 0
     for (let i = 0; i < PRODUCTS.length; i++) {
       if (!out[i]) {
         const url = PRODUCTS[i].image
         try {
-          const img = await loadImage(url)
+          const img = await loadCatalogImage(url)
           const region = await detectAndCrop(img, ['backpack', 'handbag', 'suitcase'])
-          const emb = await robustEmbed(region)
-          out[i] = emb
+          out[i] = await robustEmbed(region)
           const preds = await classifyImage(region, 3)
           outLabels[i] = preds.map((p) => p.className.toLowerCase())
         } catch (e) {
-          console.warn('Embed failed for', url, e)
           out[i] = null
           outLabels[i] = []
         }
       }
-      done++
-      setProgress(done / PRODUCTS.length)
+      done++; setProgress(done / PRODUCTS.length)
     }
-    setEmbeds(out)
-    setLabels(outLabels)
-    setStatus('Embeddings ready')
+    setEmbeds(out); setLabels(outLabels); setStatus('Embeddings ready')
   }
 
   function onFile(f: File) {
     setError(null)
-    const url = URL.createObjectURL(f)
-    setQueryUrl(url)
-    setQueryImgLoaded(false)
+    if (lastBlobURL.current) { URL.revokeObjectURL(lastBlobURL.current); lastBlobURL.current = null }
+    const blobUrl = URL.createObjectURL(f)
+    lastBlobURL.current = blobUrl
+    setDisplayQueryUrl(blobUrl); setQueryImgLoaded(false)
+    document.title = DEFAULT_TITLE
   }
-
-  function onUrl(url: string) {
+  async function onUrl(url: string) {
     setError(null)
-    const clean = url.trim()
-    setQueryUrl(proxied(clean))
-    setQueryImgLoaded(false)
+    if (lastBlobURL.current) { URL.revokeObjectURL(lastBlobURL.current); lastBlobURL.current = null }
+    try {
+      const blobUrl = await fetchToObjectURL(url.trim())
+      lastBlobURL.current = blobUrl
+      setDisplayQueryUrl(blobUrl); setQueryImgLoaded(false)
+      document.title = DEFAULT_TITLE
+    } catch {
+      setDisplayQueryUrl(null); setQueryImgLoaded(false)
+      setError('Could not load image. Use a direct .jpg/.png URL or upload a file.')
+    }
   }
 
-  // Query image → crop → embed → classify
   useEffect(() => {
     async function run() {
       if (!queryImgLoaded || !imgRef.current) return
-      setStatus('Detecting object & embedding query...')
+      setStatus('Detecting object & embedding query…')
       try {
         const region = await detectAndCrop(imgRef.current, ['backpack', 'handbag', 'suitcase'])
         const emb = await robustEmbed(region)
@@ -110,217 +141,189 @@ export default function App() {
         const qpred = await classifyImage(region, 3)
         setQueryLabels(qpred.map((p) => p.className.toLowerCase()))
         setStatus('Query embedded')
-      } catch (e) {
-        console.error(e)
-        setError(
-          'Failed to process the image. Use a direct .jpg/.png URL (or upload a file).'
-        )
+      } catch {
+        setError('Failed to process the image. Try another URL or upload a file.')
       }
     }
     run()
   }, [queryImgLoaded])
 
-  // Auto-compute catalog embeddings after the query is ready (first time)
-  useEffect(() => {
-    if (queryEmbed && !hasEmbeds) {
-      computeCatalogEmbeddings()
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [queryEmbed])
+  useEffect(() => { if (queryEmbed && !hasEmbeds) void computeCatalogEmbeddings() }, [queryEmbed]) // eslint-disable-line
 
-  const scored: Scored[] = useMemo(() => {
-    if (!queryEmbed) return []
-    const rows: Scored[] = []
+  useEffect(() => () => { if (lastBlobURL.current) URL.revokeObjectURL(lastBlobURL.current) }, [])
+
+  const scored = useMemo(() => {
+    if (!queryEmbed) return [] as (Scored & { _idx: number })[]
+    const rows: (Scored & { _idx: number })[] = []
     for (let i = 0; i < PRODUCTS.length; i++) {
-      const emb = embeds[i]
-      if (!emb) continue
+      const emb = embeds[i]; if (!emb) continue
       const sameClass = labels[i]?.some((l) => queryLabels.includes(l))
       if (onlySameClass && !sameClass) continue
       const base = cosineSimilarity(queryEmbed, emb)
       const boost = preferQueryClass && sameClass ? 0.15 : 0
-      const s = Math.max(0, Math.min(1, base + boost))
-      rows.push({ ...PRODUCTS[i], score: s })
+      rows.push({ ...PRODUCTS[i], score: Math.max(0, Math.min(1, base + boost)), _idx: i })
     }
     let r = rows
     if (category !== 'All') r = r.filter((d) => d.category === category)
     r.sort((a, b) => b.score - a.score)
     r = r.filter((d) => d.score >= minScore).slice(0, topK)
-    return r
+    return r.map((d, visibleIndex) => ({ ...d, _idx: visibleIndex }))
   }, [queryEmbed, embeds, labels, queryLabels, minScore, topK, category, preferQueryClass, onlySameClass])
 
   function relaxFilters() {
-    setMinScore(0.25)
-    setTopK(16)
-    setCategory('All')
-    setPreferQueryClass(true)
-    setOnlySameClass(false)
+    setMinScore(0.25); setTopK(16); setCategory('All'); setPreferQueryClass(true); setOnlySameClass(false)
   }
 
   return (
-    <div className="max-w-6xl mx-auto p-4 md:p-6 flex flex-col gap-6">
-      <header className="flex flex-col md:flex-row gap-3 items-start md:items-center justify-between">
-        <h1 className="text-2xl md:text-3xl font-bold">Visual Product Matcher</h1>
-        <div className="text-sm opacity-70">Client-side ML (CLIP + MobileNet + COCO-SSD)</div>
-      </header>
+    <div className="min-h-screen bg-aurora text-slate-100">
+      {/* Snow layers with fast repulsion & parallax */}
+      <Snowfall
+        count={110}
+        speed={0.7}
+        opacity={0.55}
+        blurPx={2.2}
+        parallax={12}
+        zIndex={4}
+        repelRadius={170}
+        repelStrength={1.6}
+        timeScale={1.25}
+        parallaxEase={0.2}
+        returnEase={0.14}
+        hoverDecay={0.1}
+        repelOnHover
+      />
+      <Snowfall
+        count={55}
+        speed={1.0}
+        opacity={0.95}
+        blurPx={0}
+        parallax={36}
+        zIndex={60}
+        repelRadius={190}
+        repelStrength={2.8}
+        timeScale={1.4}
+        parallaxEase={0.22}
+        returnEase={0.16}
+        hoverDecay={0.12}
+        repelOnHover
+      />
 
-      <Uploader onFile={onFile} onUrl={onUrl} />
-
-      {queryUrl && (
-        <div className="grid md:grid-cols-2 gap-4">
-          <div className="card p-4">
-            <div className="text-sm mb-2 opacity-80">Your image</div>
-            <img
-              ref={imgRef}
-              src={queryUrl}
-              alt="query"
-              onLoad={() => setQueryImgLoaded(true)}
-              onError={() =>
-                setError('Could not load image. Use a direct .jpg/.png URL or upload a file.')
-              }
-              crossOrigin="anonymous"
-              className="w-full max-h-96 object-contain rounded-xl bg-slate-900"
-            />
-            {queryLabels.length > 0 && (
-              <div className="text-xs opacity-70 mt-2">Predicted: {queryLabels.join(', ')}</div>
-            )}
-          </div>
-
-          <div className="card p-4 flex flex-col gap-3">
-            <div className="text-sm opacity-80">Status</div>
-            <div className="text-lg">{status}</div>
-            <div className="w-full h-2 bg-slate-800 rounded">
-              <div
-                className="h-2 bg-slate-100 rounded"
-                style={{ width: `${Math.round(progress * 100)}%` }}
-              />
-            </div>
-            <div className="text-xs opacity-70">Progress: {Math.round(progress * 100)}%</div>
-            <div className="flex gap-2">
-              <button
-                onClick={computeCatalogEmbeddings}
-                className="px-3 py-2 rounded-xl bg-slate-100 text-slate-900 text-sm font-semibold hover:opacity-80"
-              >
-                Compute Catalog Embeddings
-              </button>
-            </div>
-            {error && <div className="text-sm text-red-300">{error}</div>}
-          </div>
+      <div className="sticky top-0 z-40 px-4 md:px-6 py-3">
+        <div className="glass-strong px-4 py-3 rounded-2xl flex items-center justify-between">
+          <h1 className="text-xl md:text-2xl font-bold tracking-tight">Visual Product Matcher</h1>
+          <div className="text-xs md:text-sm text-white/80">Client-side ML · CLIP + MobileNet + COCO-SSD</div>
         </div>
-      )}
-
-      <div className="card p-4 flex flex-wrap gap-4 items-center">
-        <div className="flex items-center gap-2">
-          <label className="text-sm opacity-80">Min similarity</label>
-          <input
-            type="range"
-            min={0}
-            max={1}
-            step={0.01}
-            value={minScore}
-            onChange={(e) => setMinScore(parseFloat(e.target.value))}
-          />
-          <div className="text-sm tabular-nums">{(minScore * 100).toFixed(0)}%</div>
-        </div>
-        <div className="flex items-center gap-2">
-          <label className="text-sm opacity-80">Top K</label>
-          <input
-            type="range"
-            min={4}
-            max={24}
-            step={1}
-            value={topK}
-            onChange={(e) => setTopK(parseInt(e.target.value))}
-          />
-          <div className="text-sm tabular-nums">{topK}</div>
-        </div>
-        <div className="flex items-center gap-2">
-          <label className="text-sm opacity-80">Category</label>
-          <select
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            className="rounded-lg bg-slate-900 border border-slate-800 px-3 py-1.5 text-sm"
-          >
-            <option>All</option>
-            {[...new Set(PRODUCTS.map((p) => p.category))].map((c) => (
-              <option key={c}>{c}</option>
-            ))}
-          </select>
-        </div>
-
-        <label className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            checked={preferQueryClass}
-            onChange={(e) => setPreferQueryClass(e.target.checked)}
-          />
-          <span className="text-sm opacity-80">Prefer same class as query</span>
-        </label>
-
-        <label className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            checked={onlySameClass}
-            onChange={(e) => setOnlySameClass(e.target.checked)}
-          />
-          <span className="text-sm opacity-80">Only show same class</span>
-        </label>
-
-        <button
-          onClick={relaxFilters}
-          className="px-3 py-1.5 rounded-xl bg-slate-100 text-slate-900 text-sm font-semibold hover:opacity-80"
-        >
-          Show more results
-        </button>
       </div>
 
-      <section>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {scored.map((item) => (
-            <ProductCard key={item.id} item={item} score={item.score} />
-          ))}
+      <main className="relative z-50 max-w-6xl mx-auto p-4 md:p-6 flex flex-col gap-6">
+        <Uploader onFile={onFile} onUrl={onUrl} />
+
+        {displayQueryUrl && (
+          <div className="grid md:grid-cols-2 gap-4">
+            <div className="glass p-4">
+              <div className="text-sm mb-2 text-white/80">Your image</div>
+              <img
+                ref={imgRef}
+                src={displayQueryUrl}
+                alt="query"
+                crossOrigin="anonymous"
+                referrerPolicy="no-referrer"
+                onLoad={() => setQueryImgLoaded(true)}
+                onError={() => setError('Preview failed. Try uploading the file instead.')}
+                className="w-full max-h-96 object-contain rounded-2xl bg-black/30"
+              />
+              {queryLabels.length > 0 && (
+                <div className="text-xs text-white/75 mt-2">Predicted: {queryLabels.join(', ')}</div>
+              )}
+            </div>
+
+            <div className="glass p-4 flex flex-col gap-3">
+              <div className="text-sm text-white/80">Status</div>
+              <div className="text-lg">{status}</div>
+              <div className="progress-track">
+                <div className="progress-fill" style={{ width: `${Math.round(progress * 100)}%` }} />
+              </div>
+              <div className="text-xs text-white/70">Progress: {Math.round(progress * 100)}%</div>
+              <div className="flex gap-2">
+                <button className="btn-glass" onClick={computeCatalogEmbeddings}>
+                  Compute Catalog Embeddings
+                </button>
+              </div>
+              {error && <div className="text-sm text-rose-200">{error}</div>}
+            </div>
+          </div>
+        )}
+
+        <div className="glass p-4 flex flex-wrap gap-4 items-center">
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-white/80">Min similarity</label>
+            <input type="range" min={0} max={1} step={0.01} value={minScore} onChange={(e) => setMinScore(parseFloat(e.target.value))} />
+            <div className="text-sm tabular-nums">{(minScore * 100).toFixed(0)}%</div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-white/80">Top K</label>
+            <input type="range" min={4} max={24} step={1} value={topK} onChange={(e) => setTopK(parseInt(e.target.value))} />
+            <div className="text-sm tabular-nums">{topK}</div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-white/80">Category</label>
+            <select value={category} onChange={(e) => setCategory(e.target.value)} className="glass px-3 py-1.5 rounded-xl text-slate-100">
+              <option>All</option>
+              {[...new Set(PRODUCTS.map((p) => p.category))].map((c) => (<option key={c}>{c}</option>))}
+            </select>
+          </div>
+
+          <label className="flex items-center gap-2">
+            <input type="checkbox" className="switch" checked={preferQueryClass} onChange={(e) => setPreferQueryClass(e.target.checked)} />
+            <span className="text-sm text-white/80">Prefer same class as query</span>
+          </label>
+
+          <label className="flex items-center gap-2">
+            <input type="checkbox" className="switch" checked={onlySameClass} onChange={(e) => setOnlySameClass(e.target.checked)} />
+            <span className="text-sm text-white/80">Only show same class</span>
+          </label>
+
+          <button onClick={relaxFilters} className="btn-glass">Show more results</button>
         </div>
 
-        {!queryEmbed && (
-          <div className="text-center opacity-70 mt-6 text-sm">
-            Upload an image or paste a URL to see similar items.
+        <section>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {scored.map((item, visibleIndex) => (
+              <ProductCard
+                key={item.id}
+                item={item}
+                score={item.score}
+                label={`Picture ${visibleIndex + 1}`}
+                onSelect={() => { document.title = `Picture ${visibleIndex + 1}` }}
+              />
+            ))}
           </div>
-        )}
 
-        {queryEmbed && !hasEmbeds && (
-          <div className="text-center opacity-70 mt-6 text-sm">
-            Catalog embeddings not ready. Click <b>Compute Catalog Embeddings</b> or wait for the
-            auto-run to finish.
-          </div>
-        )}
+          {!queryEmbed && (
+            <div className="text-center text-white/70 mt-6 text-sm">
+              Upload an image or paste a URL to see similar items.
+            </div>
+          )}
 
-        {queryEmbed && hasEmbeds && scored.length === 0 && (
-          <div className="text-center opacity-70 mt-6 text-sm">
-            No matches ≥ {(minScore * 100).toFixed(0)}%. Lower <b>Min similarity</b>, increase
-            <b> Top K</b>, or disable the class options.
-            <button
-              onClick={relaxFilters}
-              className="ml-2 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-900 text-xs font-semibold"
-            >
-              Relax filters
-            </button>
-          </div>
-        )}
-      </section>
+          {queryEmbed && !hasEmbeds && (
+            <div className="text-center text-white/70 mt-6 text-sm">
+              Catalog embeddings not ready. Click <b>Compute Catalog Embeddings</b> or wait for the auto-run.
+            </div>
+          )}
 
-      <footer className="text-xs opacity-60 py-6">
-        Built with React, Vite, Tailwind. Similarity: CLIP (transformers.js) with MobileNet fallback
-        + object detection (COCO-SSD). Labels via MobileNet.
-      </footer>
+          {queryEmbed && hasEmbeds && (scored as any[]).length === 0 && (
+            <div className="text-center text-white/70 mt-6 text-sm">
+              No matches ≥ {(minScore * 100).toFixed(0)}%. Lower <b>Min similarity</b>, increase <b>Top K</b>, or change filters.
+            </div>
+          )}
+        </section>
+
+        <footer className="text-xs text-white/70 py-10 text-center">
+          Built with React, Vite, Tailwind. Similarity: CLIP (transformers.js) with MobileNet fallback + COCO-SSD.
+        </footer>
+      </main>
     </div>
   )
-}
-
-function loadImage(url: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const img = new Image()
-    img.crossOrigin = 'anonymous'
-    img.onload = () => resolve(img)
-    img.onerror = (e) => reject(e)
-    img.src = proxied(url)
-  })
 }

@@ -1,21 +1,43 @@
-import React, { useRef } from 'react'
+import React, { useState } from 'react'
 
-export default function Uploader({ onFile, onUrl }: { onFile: (f: File)=>void, onUrl:(url:string)=>void }){
-  const inputRef = useRef<HTMLInputElement>(null)
-  const urlRef = useRef<HTMLInputElement>(null)
+export default function Uploader({
+  onFile,
+  onUrl,
+}: {
+  onFile: (file: File) => void
+  onUrl: (url: string) => void
+}) {
+  const [url, setUrl] = useState('')
 
   return (
-    <div className="card p-4 flex flex-col md:flex-row gap-3 items-center">
-      <input ref={inputRef} type="file" accept="image/*"
-             onChange={(e)=>{ const f = e.target.files?.[0]; if(f) onFile(f) }}
-             className="block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-slate-100 file:text-slate-900 hover:file:opacity-80" />
-      <div className="text-sm opacity-70">or</div>
-      <div className="flex gap-2 w-full">
-        <input ref={urlRef} type="url" placeholder="Paste image URL (https://...)"
-               className="flex-1 rounded-xl bg-slate-900 border border-slate-800 px-3 py-2 text-sm outline-none"
+    <div className="glass-strong p-4 md:p-5 flex flex-col md:flex-row gap-3 items-stretch md:items-center card-hover">
+      <label className="flex items-center gap-3 grow">
+        <input
+          type="file"
+          accept="image/*"
+          className="file:mr-3 file:btn-glass file:rounded-xl file:border-0 file:cursor-pointer
+                     file:shadow-none file:text-sm file:px-4 file:py-2 text-slate-200"
+          onChange={(e) => {
+            const f = e.target.files?.[0]
+            if (f) onFile(f)
+          }}
         />
-        <button onClick={()=>{ const v = urlRef.current?.value?.trim(); if(v) onUrl(v) }}
-                className="px-3 py-2 rounded-xl bg-slate-100 text-slate-900 text-sm font-semibold hover:opacity-80">
+      </label>
+
+      <div className="flex gap-2 grow">
+        <input
+          className="glass w-full px-3 py-2 rounded-xl placeholder:text-slate-300 text-slate-100
+                     focus:outline-none focus:ring-2 focus:ring-white/40"
+          placeholder="Paste image URL (https://...)"
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && url.trim() && onUrl(url.trim())}
+        />
+        <button
+          className="btn-glass"
+          onClick={() => url.trim() && onUrl(url.trim())}
+          disabled={!url.trim()}
+        >
           Use URL
         </button>
       </div>
