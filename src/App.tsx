@@ -82,7 +82,60 @@ function prefer256(u: string) {
     if (url.searchParams.has('h')) url.searchParams.set('h', '256')
     return url.toString()
   }
+  if (/\/\/loremflickr\.com\//.test(u)) {
+    return u.replace(/\/\d{2,4}\/\d{2,4}(?=\/)/, '/256/256')
+  }
   return u
+}
+
+const IMG_EXT = /\.(jpg|jpeg|png|gif|webp|bmp|svg)(\?.*)?$/i
+const looksLikeImageUrl = (u: string) => IMG_EXT.test(u) || u.startsWith('data:image/')
+const dec = (s: string) => { try { return decodeURIComponent(s) } catch { return s } }
+
+/** Resolve common "wrapper" links (Google/Bing images, Drive, Dropbox, etc.) to a direct image URL */
+function resolveImageUrl(input: string): string {
+  const s = input.trim()
+  if (!s) return s
+  if (looksLikeImageUrl(s)) return s
+
+  let url: URL
+  try { url = new URL(s) } catch { return s }
+
+  // Google Images wrapper: /imgres?imgurl=...
+  if (url.hostname.includes('google.') && url.pathname.includes('/imgres')) {
+    const cand = url.searchParams.get('imgurl') || url.searchParams.get('imgrefurl') || ''
+    return dec(cand) || s
+  }
+
+  // Bing Images: mediaurl=
+  if (url.hostname.includes('bing.com')) {
+    const cand = url.searchParams.get('mediaurl')
+    if (cand) return dec(cand)
+  }
+
+  // Google Drive file → direct
+  const mDrive = url.hostname.includes('drive.google.com') && url.pathname.match(/\/file\/d\/([^/]+)/)
+  if (mDrive) return `https://drive.google.com/uc?export=download&id=${mDrive[1]}`
+
+  // Dropbox → force direct
+  if (url.hostname.endsWith('dropbox.com')) {
+    url.searchParams.set('dl', '1')
+    return url.toString()
+  }
+
+  // Unsplash photo page → CDN
+  if (url.hostname.endsWith('unsplash.com')) {
+    const m = url.pathname.match(/\/photos\/([A-Za-z0-9_-]+)/)
+    if (m) return `https://images.unsplash.com/photo-${m[1]}?w=256&h=256&fit=crop`
+  }
+
+  // Imgur simple pages → i.imgur.com/<id>.jpg
+  if (url.hostname.endsWith('imgur.com')) {
+    const m = url.pathname.match(/\/(gallery|a)\/([A-Za-z0-9]+)$/) || url.pathname.match(/\/([A-Za-z0-9]+)$/)
+    if (m) return `https://i.imgur.com/${m[m.length - 1]}.jpg`
+  }
+
+  return s
 }
 
 function loadImageFromSrc(src: string): Promise<HTMLImageElement> {
@@ -460,7 +513,9 @@ function Home() {
       lastBlobURL.current = null
     }
     try {
-      const blobUrl = await fetchToObjectURL(url.trim())
+      const resolved = resolveImageUrl(url.trim())
+      const normalized = prefer256(resolved)
+      const blobUrl = await fetchToObjectURL(normalized)
       lastBlobURL.current = blobUrl
       setDisplayQueryUrl(blobUrl)
       setQueryImgLoaded(false)

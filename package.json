@@ -8,7 +8,8 @@
     "build": "npm run build:embeds && vite build",
     "build:embeds": "tsx scripts/build-embeds.ts",
     "preview": "vite preview",
-    "match": "tsx example.ts"
+    "match": "tsx example.ts",
+    "gen:products": "tsx scripts/gen-products.ts"
   },
   "dependencies": {
     "@tensorflow-models/coco-ssd": "^2.2.3",
