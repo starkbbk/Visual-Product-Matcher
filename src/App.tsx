@@ -672,14 +672,23 @@ function About() {
       <Reveal>
         <section id="contact" className="glass p-6 rounded-2xl">
           <h3 className="text-xl font-semibold mb-2">Contact</h3>
+          <p className="text-white/80 text-sm">
+            Have feedback or a feature request? Send us a message or reach us on LinkedIn / GitHub.
+          </p>
+
           <form
-            className="grid md:grid-cols-2 gap-4"
+            className="mt-4 grid md:grid-cols-2 gap-4"
             onSubmit={(e) => {
-              e.preventDefault()
-              alert('Thanks! We received your message.')
+              e.preventDefault();
+              alert('Thanks! We received your message.');
             }}
           >
-            <input name="name" required placeholder="Your name" className="glass px-3 py-2 rounded-xl" />
+            <input
+              name="name"
+              required
+              placeholder="Your name"
+              className="glass px-3 py-2 rounded-xl"
+            />
             <input
               name="email"
               required
@@ -696,6 +705,43 @@ function About() {
             />
             <button className="btn-glass md:col-span-2">Send message</button>
           </form>
+
+          <p className="mt-4 text-sm text-white/70">
+            or email us directly:{' '}
+            <a
+              href="mailto:starkbbk@gmail.com"
+              className="text-indigo-300 underline underline-offset-2 hover:text-indigo-200"
+            >
+              starkbbk@gmail.com
+            </a>
+          </p>
+
+          {/* Always-visible social buttons (desktop + mobile) */}
+          <div className="mt-6 flex flex-wrap items-center gap-3">
+            <a
+              href="https://linkedin.com/in/starkbbk"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-3 py-2 text-white ring-1 ring-white/15 hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            >
+              <svg viewBox="0 0 24 24" className="h-5 w-5 fill-current" aria-hidden="true">
+                <path d="M4.98 3.5C4.98 4.88 3.86 6 2.5 6S0 4.88 0 3.5 1.12 1 2.5 1s2.48 1.12 2.48 2.5zM0 8h5v15H0zM8 8h4.8v2.1h.07c.67-1.27 2.3-2.6 4.73-2.6C21.4 7.5 24 9.5 24 13.6V23H19V14.8c0-1.95-.03-4.45-2.71-4.45-2.71 0-3.13 2.12-3.13 4.31V23H8z"/>
+              </svg>
+              <span className="text-sm font-medium">LinkedIn</span>
+            </a>
+
+            <a
+              href="https://github.com/starkbbk/Visual-Product-Matcher"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-3 py-2 text-white ring-1 ring-white/15 hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            >
+              <svg viewBox="0 0 24 24" className="h-5 w-5 fill-current" aria-hidden="true">
+                <path d="M12 .5a12 12 0 0 0-3.79 23.4c.6.11.82-.26.82-.58v-2.2c-3.34.73-4.04-1.6-4.04-1.6-.55-1.4-1.35-1.77-1.35-1.77-1.1-.76.08-.75.08-.75 1.22.09 1.87 1.26 1.87 1.26 1.08 1.85 2.83 1.32 3.52 1.01.11-.8.42-1.32.76-1.62-2.66-.3-5.47-1.34-5.47-5.95 0-1.32.47-2.39 1.24-3.24-.12-.3-.54-1.52.12-3.16 0 0 1.01-.32 3.32 1.23a11.5 11.5 0 0 1 6.04 0c2.31-1.55 3.31-1.23 3.31-1.23.67 1.64.25 2.86.13 3.16.77.85 1.23 1.92 1.23 3.24 0 4.62-2.81 5.64-5.49 5.94.43.37.81 1.1.81 2.22v3.29c0 .32.21.7.83.58A12 12 0 0 0 12 .5z"/>
+              </svg>
+              <span className="text-sm font-medium">GitHub</span>
+            </a>
+          </div>
         </section>
       </Reveal>
     </>
@@ -753,6 +799,7 @@ function Navbar() {
   const linkIdle = 'text-white/85 hover:text-white hover:bg-white/10';
 
   const [open, setOpen] = React.useState(false);
+  const [contactOpen, setContactOpen] = React.useState(false);
 
   // lock body scroll when menu is open (mobile)
   React.useEffect(() => {
@@ -789,7 +836,7 @@ function Navbar() {
             <NavLink to="/pricing" className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkIdle}`}>
               Pricing
             </NavLink>
-            <a href="#contact" className={`${linkBase} ${linkIdle}`}>Contact</a>
+            <button type="button" onClick={() => setContactOpen(true)} className={`${linkBase} ${linkIdle}`}>Contact</button>
           </nav>
 
           {/* mobile hamburger */}
@@ -828,7 +875,13 @@ function Navbar() {
                   <a href="/" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 hover:bg-white/10">Home</a>
                   <a href="/about" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 hover:bg-white/10">About</a>
                   <a href="/pricing" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 hover:bg-white/10">Pricing</a>
-                  <a href="#contact" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 hover:bg-white/10">Contact</a>
+                  <button
+                    type="button"
+                    onClick={() => { setOpen(false); setContactOpen(true); }}
+                    className="text-left rounded-lg px-3 py-2 hover:bg-white/10"
+                  >
+                    Contact
+                  </button>
                 </nav>
 
                 <div className="px-4 border-t border-white/10 pt-5 grid gap-3">
@@ -840,7 +893,103 @@ function Navbar() {
           </>,
           document.body
         )}
+      {contactOpen && <ContactModal onClose={() => setContactOpen(false)} />}
     </>
+  );
+}
+
+function ContactModal({ onClose }: { onClose: () => void }) {
+  const CONTACT_EMAIL = 'starkbbk@gmail.com';
+
+  function submitContact(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const data = new FormData(e.currentTarget);
+    const name = String(data.get('name') || '');
+    const email = String(data.get('email') || '');
+    const message = String(data.get('message') || '');
+    const subject = encodeURIComponent(`VPM Contact from ${name || 'Anonymous'}`);
+    const body = encodeURIComponent(`From: ${name}\nEmail: ${email}\n\n${message}`);
+    window.location.href = `mailto:${CONTACT_EMAIL}?subject=${subject}&body=${body}`;
+    onClose();
+  }
+
+  React.useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  return createPortal(
+    <>
+      <div
+        className="fixed inset-0 z-[1500] bg-slate-950/70 backdrop-blur-sm"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+      <div className="fixed inset-0 z-[1600] grid place-items-center px-4 py-6">
+        <div
+          className="w-full max-w-lg rounded-2xl bg-slate-900 text-slate-100 shadow-2xl ring-1 ring-white/15
+                     p-5 md:p-6"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Contact form"
+        >
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg md:text-xl font-semibold">Contact us</h2>
+            <button
+              type="button"
+              onClick={onClose}
+              className="inline-flex items-center rounded-xl bg-white/10 px-3 py-1.5 ring-1 ring-white/20"
+              aria-label="Close contact dialog"
+            >
+              Close
+            </button>
+          </div>
+
+          <form onSubmit={submitContact} className="mt-4 grid gap-3">
+            <input
+              name="name"
+              type="text"
+              placeholder="Your name"
+              className="rounded-xl bg-slate-900/50 border border-white/10 px-3 py-2 text-white placeholder:text-slate-500"
+            />
+            <input
+              name="email"
+              type="email"
+              required
+              placeholder="you@example.com"
+              className="rounded-xl bg-slate-900/50 border border-white/10 px-3 py-2 text-white placeholder:text-slate-500"
+            />
+            <textarea
+              name="message"
+              required
+              rows={4}
+              placeholder="How can we help?"
+              className="rounded-xl bg-slate-900/50 border border-white/10 px-3 py-2 text-white placeholder:text-slate-500 resize-y"
+            />
+            <div className="flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={onClose}
+                className="inline-flex items-center rounded-xl bg-white/10 px-4 py-2 ring-1 ring-white/20"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="inline-flex items-center rounded-xl bg-white/90 text-slate-900 px-4 py-2 font-medium hover:bg-white"
+              >
+                Send
+              </button>
+            </div>
+            <p className="text-xs text-slate-400">
+              or email us directly: <a className="underline" href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>
+            </p>
+          </form>
+        </div>
+      </div>
+    </>,
+    document.body
   );
 }
 function Stars({ value, onChange }: { value: number; onChange: (v: number) => void }) {
