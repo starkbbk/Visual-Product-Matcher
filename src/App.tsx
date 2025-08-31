@@ -391,6 +391,28 @@ function Home() {
         <Uploader onFile={onFile} onUrl={onUrl} />
       </Reveal>
 
+      <Reveal>
+        <section className="glass p-5 rounded-2xl mt-4">
+          <h2 className="text-xl font-semibold mb-2">What is this?</h2>
+          <p className="text-white/85 text-sm leading-relaxed">
+            Visual Product Matcher lets you upload a photo or paste an image link to find similar items
+            from our demo catalog. Everything runs in your browser for privacy—no images are uploaded to a server.
+          </p>
+
+          <ul className="mt-3 grid sm:grid-cols-2 gap-2 text-sm text-white/80">
+            <li>• Private: on-device processing</li>
+            <li>• Fast: precomputed vectors + caching</li>
+            <li>• Smart: CLIP embeddings + object detection</li>
+            <li>• Controls: filter by category & similarity</li>
+          </ul>
+
+          <div className="mt-4 grid gap-2 text-xs text-white/70">
+            <div>Tip: Paste a direct image URL ending in <code>.jpg</code> / <code>.png</code> for fastest results.</div>
+            <div>Tip: If results look off, toggle “Prefer same class” or raise “Min similarity.”</div>
+          </div>
+        </section>
+      </Reveal>
+
       {displayQueryUrl && (
         <div className="grid md:grid-cols-2 gap-6 mt-5 mb-6">
           <Reveal>
