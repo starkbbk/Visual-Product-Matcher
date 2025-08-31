@@ -203,6 +203,8 @@ function Home() {
   const lastBlobURL = useRef<string | null>(null)
   const resultsRef = useRef<HTMLDivElement | null>(null)
   const [autoScrolled, setAutoScrolled] = useState(false)
+  const statusRef = useRef<HTMLDivElement | null>(null)
+  const [scrolledStatus, setScrolledStatus] = useState(false)
 
   useEffect(() => { document.title = DEFAULT_TITLE }, [])
 
@@ -239,6 +241,7 @@ function Home() {
     setQueryImgLoaded(false)
     setStatusQuery('processing')
     setAutoScrolled(false)
+    setScrolledStatus(false)
     document.title = DEFAULT_TITLE
   }
 
@@ -255,12 +258,14 @@ function Home() {
       setQueryImgLoaded(false)
       setStatusQuery('processing')
       setAutoScrolled(false)
+      setScrolledStatus(false)
       document.title = DEFAULT_TITLE
     } catch {
       setDisplayQueryUrl(null)
       setQueryImgLoaded(false)
       setStatusQuery('error')
       setAutoScrolled(false)
+      setScrolledStatus(false)
       setError('Could not load image. Use a direct .jpg/.png URL or upload a file.')
     }
   }
@@ -375,6 +380,15 @@ function Home() {
       setAutoScrolled(true)
     }
   }, [scored.length, autoScrolled])
+
+  useEffect(() => {
+    if (displayQueryUrl && !scrolledStatus) {
+      requestAnimationFrame(() => {
+        statusRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      })
+      setScrolledStatus(true)
+    }
+  }, [displayQueryUrl, scrolledStatus])
 
   // UI helpers
   const QueryStatus = () => (
@@ -509,7 +523,7 @@ function Home() {
           </Reveal>
 
           <Reveal delay={0.1}>
-            <div className="glass p-5 flex flex-col gap-3">
+            <div ref={statusRef} className="glass p-5 flex flex-col gap-3">
               <div className="text-sm text-white/85">Status</div>
 
               <QueryStatus />
@@ -992,9 +1006,9 @@ function Navbar() {
                 </div>
 
                 <nav className="px-4 pb-6 grid gap-2 text-lg">
-                  <a href="/" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 hover:bg-white/10">Home</a>
-                  <a href="/about" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 hover:bg-white/10">About</a>
-                  <a href="/pricing" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 hover:bg-white/10">Pricing</a>
+                  <NavLink to="/" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 hover:bg-white/10">Home</NavLink>
+                  <NavLink to="/about" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 hover:bg-white/10">About</NavLink>
+                  <NavLink to="/pricing" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 hover:bg-white/10">Pricing</NavLink>
                   <button
                     type="button"
                     onClick={() => { setOpen(false); setContactOpen(true); }}
