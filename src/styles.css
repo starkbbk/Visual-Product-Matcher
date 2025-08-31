@@ -17,3 +17,41 @@ body {
   border: 1px solid var(--stroke);
   @apply rounded-2xl shadow;
 }
+/* ==== Live color-shifting background (fixed, full-viewport) ==== */
+.bg-aurora-live {
+  position: relative;
+  background: #0b1020;   /* deep night base */
+  isolation: isolate;    /* create stacking context for ::before */
+}
+
+.bg-aurora-live::before {
+  content: "";
+  position: fixed;                       /* cover whole viewport */
+  inset: -20% -20% -20% -20%;            /* bleed so blur hides edges */
+  z-index: -1;                           /* behind content & snow */
+  pointer-events: none;
+
+  /* soft color blobs */
+  background:
+    radial-gradient(45% 35% at 15% 20%, rgba(56,189,248,0.95), rgba(56,189,248,0) 70%),
+    radial-gradient(40% 32% at 85% 72%, rgba(139,92,246,0.95), rgba(139,92,246,0) 65%),
+    radial-gradient(38% 30% at 75% 18%, rgba(251,113,133,0.90), rgba(251,113,133,0) 60%),
+    radial-gradient(34% 28% at 22% 82%, rgba(250,204,21,0.90), rgba(250,204,21,0) 60%);
+
+  filter: blur(80px) saturate(120%) hue-rotate(0deg);
+  opacity: 0.9;
+  animation: aurora-hue 26s linear infinite,
+             aurora-float 34s ease-in-out infinite;
+  will-change: filter, transform;
+}
+
+@keyframes aurora-hue {
+  0%   { filter: blur(80px) saturate(120%) hue-rotate(0deg); }
+  100% { filter: blur(80px) saturate(120%) hue-rotate(360deg); }
+}
+
+@keyframes aurora-float {
+  0%,100% { transform: translate3d(0,0,0) scale(1); }
+  50%     { transform: translate3d(2%,-1.5%,0) scale(1.03); }
+}
+/* ==== /live background ==== */
