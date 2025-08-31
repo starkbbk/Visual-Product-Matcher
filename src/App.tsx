@@ -201,6 +201,8 @@ function Home() {
 
   const imgRef = useRef<HTMLImageElement>(null)
   const lastBlobURL = useRef<string | null>(null)
+  const resultsRef = useRef<HTMLDivElement | null>(null)
+  const [autoScrolled, setAutoScrolled] = useState(false)
 
   useEffect(() => { document.title = DEFAULT_TITLE }, [])
 
@@ -236,6 +238,7 @@ function Home() {
     setDisplayQueryUrl(blobUrl)
     setQueryImgLoaded(false)
     setStatusQuery('processing')
+    setAutoScrolled(false)
     document.title = DEFAULT_TITLE
   }
 
@@ -251,11 +254,13 @@ function Home() {
       setDisplayQueryUrl(blobUrl)
       setQueryImgLoaded(false)
       setStatusQuery('processing')
+      setAutoScrolled(false)
       document.title = DEFAULT_TITLE
     } catch {
       setDisplayQueryUrl(null)
       setQueryImgLoaded(false)
       setStatusQuery('error')
+      setAutoScrolled(false)
       setError('Could not load image. Use a direct .jpg/.png URL or upload a file.')
     }
   }
@@ -362,6 +367,15 @@ function Home() {
     return r.map((d, visibleIndex) => ({ ...d, _idx: visibleIndex }))
   }, [queryEmbed, embeds, labels, queryLabels, minScore, topK, category, preferQueryClass, onlySameClass])
 
+  useEffect(() => {
+    if (!autoScrolled && scored.length > 0) {
+      requestAnimationFrame(() => {
+        resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      })
+      setAutoScrolled(true)
+    }
+  }, [scored.length, autoScrolled])
+
   // UI helpers
   const QueryStatus = () => (
     <div className="flex items-center gap-3">
@@ -388,27 +402,84 @@ function Home() {
   return (
     <>
       <Reveal>
-        <Uploader onFile={onFile} onUrl={onUrl} />
-      </Reveal>
+        <section className="glass p-5 rounded-2xl">
+          <div className="grid md:grid-cols-2 gap-5 items-start">
+            {/* Left: Uploader with short helper text */}
+            <div className="h-full">
+              <Uploader onFile={onFile} onUrl={onUrl} />
 
-      <Reveal>
-        <section className="glass p-5 rounded-2xl mt-4">
-          <h2 className="text-xl font-semibold mb-2">What is this?</h2>
-          <p className="text-white/85 text-sm leading-relaxed">
-            Visual Product Matcher lets you upload a photo or paste an image link to find similar items
-            from our demo catalog. Everything runs in your browser for privacy—no images are uploaded to a server.
-          </p>
+              {/* Extra helpful info below uploader */}
+              <div className="mt-4 text-sm text-white/85 space-y-3">
+                <div className="grid sm:grid-cols-2 gap-3">
+                  {/* Quick tips */}
+                  <div className="rounded-xl bg-white/5 ring-1 ring-white/10 p-3">
+                    <div className="text-[11px] uppercase tracking-wide text-white/60">Quick tips</div>
+                    <ul className="mt-2 list-disc pl-5 text-[13px] leading-relaxed text-white/80 space-y-1">
+                      <li>Use a direct <code>.jpg</code>/<code>.png</code> URL or upload a file for the fastest results.</li>
+                      <li>Center the main object; tighter crops improve matching.</li>
+                      <li>Need stricter matches? Turn on <i>Prefer same class</i> or raise <i>Min similarity</i>.</li>
+                    </ul>
+                  </div>
 
-          <ul className="mt-3 grid sm:grid-cols-2 gap-2 text-sm text-white/80">
-            <li>• Private: on-device processing</li>
-            <li>• Fast: precomputed vectors + caching</li>
-            <li>• Smart: CLIP embeddings + object detection</li>
-            <li>• Controls: filter by category & similarity</li>
-          </ul>
+                  {/* Supported sources */}
+                  <div className="rounded-xl bg-white/5 ring-1 ring-white/10 p-3">
+                    <div className="text-[11px] uppercase tracking-wide text-white/60">Works great with</div>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {[...SAFE_HOSTS].map((h) => (
+                        <span
+                          key={String(h)}
+                          className="inline-flex items-center rounded-lg bg-white/10 ring-1 ring-white/15 px-2 py-1 text-[12px] text-white/85"
+                          title={String(h)}
+                        >
+                          {String(h)}
+                        </span>
+                      ))}
+                    </div>
+                    <p className="mt-2 text-[12px] text-white/65">
+                      Tip: Google/Bing result links usually redirect — open the image in a new tab and copy its direct URL.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
 
-          <div className="mt-4 grid gap-2 text-xs text-white/70">
-            <div>Tip: Paste a direct image URL ending in <code>.jpg</code> / <code>.png</code> for fastest results.</div>
-            <div>Tip: If results look off, toggle “Prefer same class” or raise “Min similarity.”</div>
+            {/* Right: What is this? */}
+            <div className="h-full">
+              <h2 className="text-xl font-semibold mb-2">What is this?</h2>
+              <p className="text-white/85 text-sm leading-relaxed">
+                Visual Product Matcher lets you upload a photo or paste an image link to find similar items
+                from our demo catalog. Everything runs in your browser for privacy—no images are uploaded to a server.
+              </p>
+              <ul className="mt-3 grid sm:grid-cols-2 gap-2 text-sm text-white/80">
+                <li>• Private: on-device processing</li>
+                <li>• Fast: precomputed vectors + caching</li>
+                <li>• Smart: CLIP embeddings + object detection</li>
+                <li>• Controls: filter by category &amp; similarity</li>
+              </ul>
+              <div className="mt-4 grid gap-2 text-xs text-white/70">
+                <div>
+                  Tip: Paste a direct image URL ending in <code>.jpg</code> / <code>.png</code> for fastest results.
+                </div>
+                <div>
+                  Tip: If results look off, toggle “Prefer same class” or raise “Min similarity.”
+                </div>
+              </div>
+              {/* Privacy & speed note (moved here) */}
+              <div className="mt-5 rounded-xl bg-white/5 ring-1 ring-white/10 p-3">
+                <p className="text-[13px] text-white/80">
+                  All processing happens in your browser for privacy. For instant results on repeat visits,
+                  precompute the demo catalog once and it will be cached locally.
+                </p>
+                <button
+                  type="button"
+                  onClick={computeCatalogEmbeddings}
+                  className="mt-3 inline-flex items-center rounded-lg bg-white/10 px-3 py-1.5 text-[13px] ring-1 ring-white/15 hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                  title="Compute any missing embeddings now"
+                >
+                  Precompute catalog
+                </button>
+              </div>
+            </div>
           </div>
         </section>
       </Reveal>
@@ -563,7 +634,7 @@ function Home() {
       </Reveal>
 
       {/* Results */}
-      <section>
+      <section ref={resultsRef}>
         <Reveal delay={0.15}>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5 md:gap-6">
             {scored.map((item, visibleIndex) => (
@@ -607,7 +678,16 @@ function Home() {
           <ul className="mt-3 text-sm text-white/80 list-disc pl-5 space-y-1">
             <li><b>Fastest results:</b> Use direct <code>.jpg</code>/<code>.png</code> links or upload a file.</li>
             <li><b>Tune precision:</b> Raise <i>Min similarity</i> or enable <i>Prefer same class</i> to tighten matches.</li>
-            <li><b>Bigger catalogs:</b> Precompute vectors once and they’ll load instantly on next visits.</li>
+            <li>
+              <b>Bigger catalogs:</b> Precompute vectors once and they’ll load instantly on next visits.{` `}
+              <button
+                type="button"
+                onClick={computeCatalogEmbeddings}
+                className="inline-flex items-center rounded-lg bg-white/10 px-2 py-1 text-xs ring-1 ring-white/15 hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+              >
+                Precompute now
+              </button>
+            </li>
           </ul>
           <div className="mt-4 text-sm text-white/80">
             Built with ❤️ by <a href="https://github.com/starkbbk" target="_blank" rel="noreferrer" className="underline decoration-white/40 hover:text-white">starkbbk</a>. 
