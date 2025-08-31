@@ -644,10 +644,10 @@ function Home() {
 
       {/* Controls */}
       <Reveal delay={0.12}>
-        <div className="glass px-4 py-4 mt-4 mb-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="glass w-full px-4 py-4 mt-4 mb-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {/* Min similarity */}
-          <div className="flex items-center gap-2 w-full">
-            <label className="text-sm text-white/85 whitespace-nowrap">Min similarity</label>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full min-w-0">
+            <label className="text-xs sm:text-sm text-white/85 whitespace-nowrap">Min similarity</label>
             <input
               type="range"
               min={0}
@@ -655,14 +655,14 @@ function Home() {
               step={0.01}
               value={minScore}
               onChange={(e) => setMinScore(parseFloat(e.target.value))}
-              className="flex-1"
+              className="w-full"
             />
-            <div className="text-sm tabular-nums w-12 text-right">{(minScore * 100).toFixed(0)}%</div>
+            <div className="text-xs sm:text-sm tabular-nums w-14 text-right">{(minScore * 100).toFixed(0)}%</div>
           </div>
 
           {/* Top K */}
-          <div className="flex items-center gap-2 w-full">
-            <label className="text-sm text-white/85 whitespace-nowrap">Top K</label>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full min-w-0">
+            <label className="text-xs sm:text-sm text-white/85 whitespace-nowrap">Top K</label>
             <input
               type="range"
               min={4}
@@ -670,18 +670,18 @@ function Home() {
               step={1}
               value={topK}
               onChange={(e) => setTopK(parseInt(e.target.value))}
-              className="flex-1"
+              className="w-full"
             />
-            <div className="text-sm tabular-nums w-8 text-right">{topK}</div>
+            <div className="text-xs sm:text-sm tabular-nums w-10 text-right">{topK}</div>
           </div>
 
           {/* Category */}
-          <div className="flex items-center gap-2 w-full">
-            <label className="text-sm text-white/85 whitespace-nowrap">Category</label>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full min-w-0">
+            <label className="text-xs sm:text-sm text-white/85 whitespace-nowrap">Category</label>
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="glass px-3 py-1.5 rounded-xl text-slate-100 flex-1"
+              className="glass px-3 py-1.5 rounded-xl text-slate-100 w-full"
             >
               <option>All</option>
               {[...new Set(PRODUCTS.map((p) => p.category))].map((c) => (
@@ -691,40 +691,40 @@ function Home() {
           </div>
 
           {/* Prefer same class */}
-          <label className="flex items-center gap-2 w-full">
+          <label className="flex items-center justify-between sm:justify-start gap-2 w-full">
+            <span className="text-xs sm:text-sm text-white/85">Prefer same class</span>
             <input
               type="checkbox"
               className="switch"
               checked={preferQueryClass}
               onChange={(e) => setPreferQueryClass(e.target.checked)}
             />
-            <span className="text-sm text-white/85">Prefer same class</span>
           </label>
 
           {/* Only same class */}
-          <label className="flex items-center gap-2 w-full">
+          <label className="flex items-center justify-between sm:justify-start gap-2 w-full">
+            <span className="text-xs sm:text-sm text-white/85">Only show same class</span>
             <input
               type="checkbox"
               className="switch"
               checked={onlySameClass}
               onChange={(e) => setOnlySameClass(e.target.checked)}
             />
-            <span className="text-sm text-white/85">Only same class</span>
           </label>
 
           {/* Fast mode */}
-          <label className="flex items-center gap-2 w-full">
+          <label className="flex items-center justify-between sm:justify-start gap-2 w-full">
+            <span className="text-xs sm:text-sm text-white/85">Fast mode</span>
             <input
               type="checkbox"
               className="switch"
               checked={fastMode}
               onChange={(e) => setFastMode(e.target.checked)}
             />
-            <span className="text-sm text-white/85">Fast mode</span>
           </label>
 
-          {/* Reset button — full row */}
-          <div className="sm:col-span-2 lg:col-span-3 flex justify-end">
+          {/* Reset — full row */}
+          <div className="col-span-1 sm:col-span-2 lg:col-span-3 flex justify-end">
             <button onClick={relaxFilters} className="btn-glass">Reset</button>
           </div>
         </div>
