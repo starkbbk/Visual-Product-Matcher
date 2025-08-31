@@ -39,6 +39,8 @@ const SAFE_HOSTS = new Set([
   'images.unsplash.com',
   'i.imgur.com',
   'loremflickr.com',
+  'images.pexels.com',
+  'cdn.pixabay.com',
 ])
 
 /* --------------------
@@ -99,6 +101,15 @@ function resolveImageUrl(input: string): string {
   let url: URL
   try { url = new URL(s) } catch { return s }
 
+  // Google generic URL wrapper: /url?sa=i&url=...
+  if (url.hostname.includes('google.') && url.pathname === '/url') {
+    const cand = url.searchParams.get('url') || url.searchParams.get('imgurl') || ''
+    if (cand) {
+      const unwrapped = dec(cand)
+      if (unwrapped && unwrapped !== s) return resolveImageUrl(unwrapped)
+    }
+  }
+
   // Google Images wrapper
   if (url.hostname.includes('google.') && url.pathname.includes('/imgres')) {
     const cand = url.searchParams.get('imgurl') || url.searchParams.get('imgrefurl') || ''
@@ -121,6 +132,11 @@ function resolveImageUrl(input: string): string {
   if (url.hostname.endsWith('unsplash.com')) {
     const m = url.pathname.match(/\/photos\/([A-Za-z0-9_-]+)/)
     if (m) return `https://images.unsplash.com/photo-${m[1]}?w=256&h=256&fit=crop`
+  }
+  // Pexels photo page -> direct CDN image guess
+  if (url.hostname.endsWith('pexels.com')) {
+    const m = url.pathname.match(/\/photo[s]?\/(\d+)/)
+    if (m) return `https://images.pexels.com/photos/${m[1]}/pexels-photo-${m[1]}.jpeg?w=256&h=256&fit=crop&auto=compress&cs=tinysrgb`
   }
   // Imgur page -> direct jpg
   if (url.hostname.endsWith('imgur.com')) {
@@ -487,22 +503,34 @@ function Home() {
       if (!queryImgLoaded || !imgRef.current) return
       setStatusQuery('processing')
       try {
-        const region = await detectAndCrop(imgRef.current, ['backpack', 'handbag', 'suitcase', 'laptop'])
-        const resized = to224(region as any)
-        const fastEmb = await imageToEmbedding(resized as any)
-        setQueryEmbed(fastEmb)
-        const qpred = await classifyImage(resized as any, 3)
-        setQueryLabels(qpred.map((p) => p.className.toLowerCase()))
-        setStatusQuery('ready')
-        // Upgrade to CLIP in background if available
-        robustEmbed(resized as any).then(setQueryEmbed).catch(() => {})
+        if (fastMode) {
+          // Fast mode: skip detection, just resize and embed
+          const resized = to224(imgRef.current)
+          const fastEmb = await imageToEmbedding(resized as any)
+          setQueryEmbed(fastEmb)
+          setQueryLabels([]) // Skip classification for speed
+          setStatusQuery('ready')
+          // Upgrade to robust embedding in background
+          robustEmbed(resized as any).then(setQueryEmbed).catch(() => {})
+        } else {
+          // Accurate mode: detect, crop, embed, and classify
+          const region = await detectAndCrop(imgRef.current, ['backpack', 'handbag', 'suitcase', 'laptop'])
+          const resized = to224(region as any)
+          const fastEmb = await imageToEmbedding(resized as any)
+          setQueryEmbed(fastEmb)
+          const qpred = await classifyImage(resized as any, 3)
+          setQueryLabels(qpred.map((p) => p.className.toLowerCase()))
+          setStatusQuery('ready')
+          // Upgrade to robust embedding in background
+          robustEmbed(resized as any).then(setQueryEmbed).catch(() => {})
+        }
       } catch {
         setStatusQuery('error')
         setError('Failed to process the image. Try another URL or upload a file.')
       }
     }
     run()
-  }, [queryImgLoaded])
+  }, [queryImgLoaded, fastMode])
 
   // Auto-run catalog embeddings after first query is embedded
   useEffect(() => {
@@ -1243,7 +1271,7 @@ function AppShell() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-aurora text-slate-100">
+    <div className="min-h-screen bg-aurora text-slate-100 overflow-x-hidden">
       <Snowfall enabled density={isMobile ? 0.4 : 0.8} zIndex={1} />
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[2000] bg-white/90 text-slate-900 px-3 py-2 rounded-md">Skip to content</a>
       <Navbar />
