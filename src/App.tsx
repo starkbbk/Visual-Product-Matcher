@@ -38,6 +38,7 @@ const SAFE_HOSTS = new Set([
   'picsum.photos',
   'images.unsplash.com',
   'i.imgur.com',
+  'loremflickr.com',
 ])
 
 /* --------------------
@@ -98,24 +99,30 @@ function resolveImageUrl(input: string): string {
   let url: URL
   try { url = new URL(s) } catch { return s }
 
+  // Google Images wrapper
   if (url.hostname.includes('google.') && url.pathname.includes('/imgres')) {
     const cand = url.searchParams.get('imgurl') || url.searchParams.get('imgrefurl') || ''
     return dec(cand) || s
   }
+  // Bing Images wrapper
   if (url.hostname.includes('bing.com')) {
     const cand = url.searchParams.get('mediaurl')
     if (cand) return dec(cand)
   }
+  // Google Drive share link -> direct
   const mDrive = url.hostname.includes('drive.google.com') && url.pathname.match(/\/file\/d\/([^/]+)/)
   if (mDrive) return `https://drive.google.com/uc?export=download&id=${mDrive[1]}`
+  // Dropbox share -> direct
   if (url.hostname.endsWith('dropbox.com')) {
     url.searchParams.set('dl', '1')
     return url.toString()
   }
+  // Unsplash page -> direct CDN guess
   if (url.hostname.endsWith('unsplash.com')) {
     const m = url.pathname.match(/\/photos\/([A-Za-z0-9_-]+)/)
     if (m) return `https://images.unsplash.com/photo-${m[1]}?w=256&h=256&fit=crop`
   }
+  // Imgur page -> direct jpg
   if (url.hostname.endsWith('imgur.com')) {
     const m = url.pathname.match(/\/(gallery|a)\/([A-Za-z0-9]+)$/) || url.pathname.match(/\/([A-Za-z0-9]+)$/)
     if (m) return `https://i.imgur.com/${m[m.length - 1]}.jpg`
@@ -133,6 +140,7 @@ function loadImageFromSrc(src: string): Promise<HTMLImageElement> {
   })
 }
 
+/** Fetch to blob → objectURL. If CORS fails, retry via proxy unless host is whitelisted. */
 async function fetchToObjectURL(rawUrl: string): Promise<string> {
   const tryFetch = async (url: string) => {
     const res = await fetch(url, { mode: 'cors', referrerPolicy: 'no-referrer' })
@@ -148,6 +156,7 @@ async function fetchToObjectURL(rawUrl: string): Promise<string> {
   }
 }
 
+/** Always prefer object URLs for catalog images to avoid canvas taint */
 async function loadCatalogImage(url: string): Promise<HTMLImageElement> {
   const objUrl = await fetchToObjectURL(prefer256(url))
   try {
@@ -155,10 +164,12 @@ async function loadCatalogImage(url: string): Promise<HTMLImageElement> {
   } finally {}
 }
 
+/** Yield control so Chrome can paint progress updates */
 function tick() {
   return new Promise<void>((r) => requestAnimationFrame(() => r()))
 }
 
+/** Fast 224x224 letterboxed resizer (works with HTMLImageElement or Canvas) */
 function to224(el: HTMLImageElement | HTMLCanvasElement) {
   const W = 224, H = 224
   const canvas: HTMLCanvasElement | OffscreenCanvas =
@@ -178,6 +189,7 @@ function to224(el: HTMLImageElement | HTMLCanvasElement) {
   return canvas
 }
 
+/** One-time warm-up to reduce first inference time */
 function warmModelsOnce() {
   const k = 'vpm:warmed'
   if (sessionStorage.getItem(k)) return
@@ -214,15 +226,18 @@ function useIsMobile() {
  * HOME (matcher)
  * -------------------- */
 function Home() {
+  // Query state
   const [displayQueryUrl, setDisplayQueryUrl] = useState<string | null>(null)
   const [queryImgLoaded, setQueryImgLoaded] = useState(false)
   const [queryEmbed, setQueryEmbed] = useState<Float32Array | null>(null)
   const [queryLabels, setQueryLabels] = useState<string[]>([])
 
+  // Catalog state
   const [embeds, setEmbeds] = useState<(Float32Array | null)[]>(Array(PRODUCTS.length).fill(null))
   const [labels, setLabels] = useState<string[][]>(Array(PRODUCTS.length).fill([]))
   const hasEmbeds = embeds.some(Boolean)
 
+  // UI state
   const [progress, setProgress] = useState(0)
   const [statusQuery, setStatusQuery] = useState<'idle' | 'processing' | 'ready' | 'error'>('idle')
   const [statusCatalog, setStatusCatalog] = useState<'idle' | 'processing' | 'ready' | 'error'>('idle')
@@ -241,6 +256,7 @@ function Home() {
     document.title = DEFAULT_TITLE
   }, [])
 
+  // Try to hydrate from local cache and remote static JSON
   useEffect(() => {
     try {
       const e = localStorage.getItem(CACHE_EMBEDS)
@@ -359,6 +375,7 @@ function Home() {
     setLabels(outLabels)
     setStatusCatalog('ready')
 
+    // Optional refinement: upgrade the top matches with CLIP+detector
     if (fastMode && queryEmbed) {
       const k = 64
       const idxs = out
@@ -464,6 +481,7 @@ function Home() {
     }
   }
 
+  // When the preview <img> is ready, embed the query
   useEffect(() => {
     async function run() {
       if (!queryImgLoaded || !imgRef.current) return
@@ -476,6 +494,7 @@ function Home() {
         const qpred = await classifyImage(resized as any, 3)
         setQueryLabels(qpred.map((p) => p.className.toLowerCase()))
         setStatusQuery('ready')
+        // Upgrade to CLIP in background if available
         robustEmbed(resized as any).then(setQueryEmbed).catch(() => {})
       } catch {
         setStatusQuery('error')
@@ -485,6 +504,7 @@ function Home() {
     run()
   }, [queryImgLoaded])
 
+  // Auto-run catalog embeddings after first query is embedded
   useEffect(() => {
     if (queryEmbed && !hasEmbeds) {
       computeCatalogEmbeddings()
@@ -492,6 +512,7 @@ function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [queryEmbed])
 
+  // Cleanup object URLs
   useEffect(
     () => () => {
       if (lastBlobURL.current) URL.revokeObjectURL(lastBlobURL.current)
@@ -580,52 +601,53 @@ function Home() {
             </div>
           </Reveal>
 
-          <Reveal delay={0.1}>
-            <div className="glass p-5 flex flex-col gap-3">
-              <div className="text-sm text-white/85">Status</div>
+            <Reveal delay={0.1}>
+              <div className="glass p-5 flex flex-col gap-3">
+                <div className="text-sm text-white/85">Status</div>
 
-              <QueryStatus />
-              <div className="progress-track">
-                <div
-                  className="progress-fill"
-                  style={{ width: `${statusQuery === 'ready' ? 100 : statusQuery === 'processing' ? 50 : 0}%` }}
-                />
-              </div>
+                <QueryStatus />
+                <div className="progress-track">
+                  <div
+                    className="progress-fill"
+                    style={{ width: `${statusQuery === 'ready' ? 100 : statusQuery === 'processing' ? 50 : 0}%` }}
+                  />
+                </div>
 
-              <CatalogStatus />
-              <div className="progress-track">
-                <div className="progress-fill" style={{ width: `${Math.round(progress * 100)}%` }} />
-              </div>
-              <div className="text-xs text-white/70">
-                {statusCatalog === 'processing' ? `Progress: ${Math.round(progress * 100)}%` : ' '}
-              </div>
+                <CatalogStatus />
+                <div className="progress-track">
+                  <div className="progress-fill" style={{ width: `${Math.round(progress * 100)}%` }} />
+                </div>
+                <div className="text-xs text-white/70">
+                  {statusCatalog === 'processing' ? `Progress: ${Math.round(progress * 100)}%` : ' '}
+                </div>
 
-              <div className="flex flex-wrap gap-2">
-                <button
-                  className="btn-glass"
-                  onClick={computeCatalogEmbeddings}
-                  disabled={statusCatalog === 'processing'}
-                  aria-disabled={statusCatalog === 'processing'}
-                  title={statusCatalog === 'processing' ? 'Working…' : 'Recompute catalog embeddings'}
-                >
-                  Compute Catalog Embeddings
-                </button>
-                <button className="btn-glass" onClick={exportEmbeds}>Export vectors</button>
-                <button className="btn-glass" onClick={exportLabels}>Export labels</button>
-                <button className="btn-glass" onClick={clearCache}>Clear cache</button>
-              </div>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    className="btn-glass"
+                    onClick={computeCatalogEmbeddings}
+                    disabled={statusCatalog === 'processing'}
+                    aria-disabled={statusCatalog === 'processing'}
+                    title={statusCatalog === 'processing' ? 'Working…' : 'Recompute catalog embeddings'}
+                  >
+                    Compute Catalog Embeddings
+                  </button>
+                  <button className="btn-glass" onClick={exportEmbeds}>Export vectors</button>
+                  <button className="btn-glass" onClick={exportLabels}>Export labels</button>
+                  <button className="btn-glass" onClick={clearCache}>Clear cache</button>
+                </div>
 
-              {error && <div className="text-sm text-rose-200">{error}</div>}
-            </div>
-          </Reveal>
+                {error && <div className="text-sm text-rose-200">{error}</div>}
+              </div>
+            </Reveal>
         </div>
       )}
 
       {/* Controls */}
       <Reveal delay={0.12}>
-        <div className="glass px-4 py-3 mt-4 mb-8 flex flex-nowrap gap-x-6 gap-y-3 items-center overflow-x-auto no-scrollbar">
-          <div className="flex items-center gap-2">
-            <label className="text-sm text-white/85">Min similarity</label>
+        <div className="glass px-4 py-4 mt-4 mb-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {/* Min similarity */}
+          <div className="flex items-center gap-2 w-full">
+            <label className="text-sm text-white/85 whitespace-nowrap">Min similarity</label>
             <input
               type="range"
               min={0}
@@ -633,13 +655,14 @@ function Home() {
               step={0.01}
               value={minScore}
               onChange={(e) => setMinScore(parseFloat(e.target.value))}
-              className="w-32 sm:w-40"
+              className="flex-1"
             />
-            <div className="text-sm tabular-nums w-10">{(minScore * 100).toFixed(0)}%</div>
+            <div className="text-sm tabular-nums w-12 text-right">{(minScore * 100).toFixed(0)}%</div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <label className="text-sm text-white/85">Top K</label>
+          {/* Top K */}
+          <div className="flex items-center gap-2 w-full">
+            <label className="text-sm text-white/85 whitespace-nowrap">Top K</label>
             <input
               type="range"
               min={4}
@@ -647,17 +670,18 @@ function Home() {
               step={1}
               value={topK}
               onChange={(e) => setTopK(parseInt(e.target.value))}
-              className="w-28 sm:w-36"
+              className="flex-1"
             />
-            <div className="text-sm tabular-nums w-8">{topK}</div>
+            <div className="text-sm tabular-nums w-8 text-right">{topK}</div>
           </div>
 
-          <div className="flex items-center gap-2">
+          {/* Category */}
+          <div className="flex items-center gap-2 w-full">
             <label className="text-sm text-white/85 whitespace-nowrap">Category</label>
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="glass px-3 py-1.5 rounded-xl text-slate-100"
+              className="glass px-3 py-1.5 rounded-xl text-slate-100 flex-1"
             >
               <option>All</option>
               {[...new Set(PRODUCTS.map((p) => p.category))].map((c) => (
@@ -666,7 +690,8 @@ function Home() {
             </select>
           </div>
 
-          <label className="flex items-center gap-2 whitespace-nowrap">
+          {/* Prefer same class */}
+          <label className="flex items-center gap-2 w-full">
             <input
               type="checkbox"
               className="switch"
@@ -676,7 +701,8 @@ function Home() {
             <span className="text-sm text-white/85">Prefer same class</span>
           </label>
 
-          <label className="flex items-center gap-2 whitespace-nowrap">
+          {/* Only same class */}
+          <label className="flex items-center gap-2 w-full">
             <input
               type="checkbox"
               className="switch"
@@ -686,7 +712,8 @@ function Home() {
             <span className="text-sm text-white/85">Only same class</span>
           </label>
 
-          <label className="flex items-center gap-2 whitespace-nowrap">
+          {/* Fast mode */}
+          <label className="flex items-center gap-2 w-full">
             <input
               type="checkbox"
               className="switch"
@@ -696,7 +723,8 @@ function Home() {
             <span className="text-sm text-white/85">Fast mode</span>
           </label>
 
-          <div className="ml-auto flex-shrink-0">
+          {/* Reset button — full row */}
+          <div className="sm:col-span-2 lg:col-span-3 flex justify-end">
             <button onClick={relaxFilters} className="btn-glass">Reset</button>
           </div>
         </div>
@@ -883,6 +911,7 @@ function Navbar() {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
+  // Lock background scroll when overlays are open
   React.useEffect(() => {
     const prev = document.body.style.overflow;
     if (openMenu || openContact) {
