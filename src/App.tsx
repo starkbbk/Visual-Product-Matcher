@@ -597,6 +597,24 @@ function Home() {
           </div>
         )}
       </section>
+
+      <Reveal delay={0.18}>
+        <section className="glass p-5 rounded-2xl mt-6">
+          <h3 className="text-xl font-semibold mb-2">Thanks for visiting 👋</h3>
+          <p className="text-white/85 text-sm leading-relaxed">
+            You’re using <b>Visual Product Matcher</b> — a private, client‑side visual search. Drop a photo or paste an image URL and we’ll find visually similar items from the demo catalog. Nothing is uploaded to a server.
+          </p>
+          <ul className="mt-3 text-sm text-white/80 list-disc pl-5 space-y-1">
+            <li><b>Fastest results:</b> Use direct <code>.jpg</code>/<code>.png</code> links or upload a file.</li>
+            <li><b>Tune precision:</b> Raise <i>Min similarity</i> or enable <i>Prefer same class</i> to tighten matches.</li>
+            <li><b>Bigger catalogs:</b> Precompute vectors once and they’ll load instantly on next visits.</li>
+          </ul>
+          <div className="mt-4 text-sm text-white/80">
+            Built with ❤️ by <a href="https://github.com/starkbbk" target="_blank" rel="noreferrer" className="underline decoration-white/40 hover:text-white">starkbbk</a>. 
+            Have feedback? Use the contact form below or email <a href="mailto:starkbbk@gmail.com" className="underline decoration-white/40 hover:text-white">starkbbk@gmail.com</a>.
+          </div>
+        </section>
+      </Reveal>
     </>
   )
 }
