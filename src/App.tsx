@@ -26,6 +26,7 @@ const DEFAULT_TITLE = 'Visual Product Matcher'
 const CACHE_VER = 'v1'
 const CACHE_EMBEDS = `vpm:catalogEmbeds:${CACHE_VER}`
 const CACHE_LABELS = `vpm:catalogLabels:${CACHE_VER}`
+const CATALOG_VERSION = 'v1';
 const REMOTE_EMBEDS_URL = '/embeds.v1.json'
 const REMOTE_LABELS_URL = '/labels.v1.json'
 
@@ -251,6 +252,7 @@ function Home() {
   // Catalog state
   const [embeds, setEmbeds] = useState<(Float32Array | null)[]>(Array(PRODUCTS.length).fill(null))
   const [labels, setLabels] = useState<string[][]>(Array(PRODUCTS.length).fill([]))
+  const catalogDoneRef = useRef(false)
   const hasEmbeds = embeds.some(Boolean)
 
   // UI state
@@ -281,7 +283,10 @@ function Home() {
         const record: Record<string, number[]> = JSON.parse(e)
         const arr = PRODUCTS.map((p) => (record[p.id] ? new Float32Array(record[p.id]) : null))
         setEmbeds(arr)
-        setStatusCatalog('ready')
+        if (arr.some(Boolean)) {
+          catalogDoneRef.current = true
+          setStatusCatalog('ready')
+        }
       }
       if (l) {
         const record: Record<string, string[]> = JSON.parse(l)
@@ -301,7 +306,10 @@ function Home() {
           const record = (await eRes.json()) as Record<string, number[]>
           const arr = PRODUCTS.map(p => (record[p.id] ? new Float32Array(record[p.id]) : null))
           setEmbeds(arr)
-          setStatusCatalog('ready')
+          if (arr.some(Boolean)) {
+            catalogDoneRef.current = true
+            setStatusCatalog('ready')
+          }
           localStorage.setItem(CACHE_EMBEDS, JSON.stringify(record))
         }
         if (lRes?.ok) {
@@ -316,6 +324,10 @@ function Home() {
 
   async function computeCatalogEmbeddings() {
     if (statusCatalog === 'processing') return
+    if (catalogDoneRef.current) {
+      setStatusCatalog('ready')
+      return
+    }
     setStatusCatalog('processing')
 
     const out = [...embeds]
@@ -334,6 +346,7 @@ function Home() {
 
     if (missing.length === 0) {
       setStatusCatalog('ready')
+      catalogDoneRef.current = true
       return
     }
 
@@ -390,6 +403,7 @@ function Home() {
     setEmbeds(out)
     setLabels(outLabels)
     setStatusCatalog('ready')
+    catalogDoneRef.current = true
 
     // Optional refinement: upgrade the top matches with CLIP+detector
     if (fastMode && queryEmbed) {
@@ -458,6 +472,7 @@ function Home() {
     setLabels(Array(PRODUCTS.length).fill([]))
     setStatusCatalog('idle')
     setProgress(0)
+    catalogDoneRef.current = false
   }
 
   function onFile(f: File) {
@@ -534,7 +549,7 @@ function Home() {
 
   // Auto-run catalog embeddings after first query is embedded
   useEffect(() => {
-    if (queryEmbed && !hasEmbeds) {
+    if (queryEmbed && !catalogDoneRef.current && !hasEmbeds) {
       computeCatalogEmbeddings()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
