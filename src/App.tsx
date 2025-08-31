@@ -883,44 +883,65 @@ function Navbar() {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
+  React.useEffect(() => {
+    const prev = document.body.style.overflow;
+    if (openMenu || openContact) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = prev || '';
+    }
+    return () => { document.body.style.overflow = prev; };
+  }, [openMenu, openContact]);
+
   const MenuOverlay = ({ onClose }: { onClose: () => void }) => (
     <>
       <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-[1300]" onClick={onClose} />
-      <div className="fixed inset-0 z-[1400] flex items-end sm:items-center justify-center p-4">
-        <div className="w-full sm:w-[min(95vw,560px)] max-w-lg rounded-t-2xl sm:rounded-2xl bg-slate-900/85 backdrop-blur-xl ring-1 ring-white/15 shadow-2xl p-6">
-          <div className="flex items-center justify-between mb-4">
+      <div className="fixed inset-0 z-[1400] p-4 sm:p-6">
+        <div
+          className="mx-auto w-[min(95vw,560px)] rounded-2xl bg-slate-900/90 backdrop-blur-xl ring-1 ring-white/15 shadow-2xl flex flex-col overflow-hidden"
+          style={{ maxHeight: 'calc(100dvh - 2rem)' }}
+        >
+          <div className="sticky top-0 px-6 py-3 bg-slate-900/95 backdrop-blur-xl border-b border-white/10 flex items-center justify-between z-[1]">
             <h3 className="text-xl font-semibold">Menu</h3>
-            <button onClick={onClose} className="btn-glass px-3 py-1.5">Close</button>
+            <button onClick={onClose} className="px-3 py-1.5 rounded-xl bg-white/15 text-white hover:bg-white/25">Close</button>
           </div>
-          <div className="grid gap-3">
-            <NavLink to="/" onClick={onClose} className="px-3 py-3 rounded-xl text-white hover:bg-white/10">Home</NavLink>
-            <NavLink to="/about" onClick={onClose} className="px-3 py-3 rounded-xl text-white hover:bg-white/10">About</NavLink>
-            <NavLink to="/pricing" onClick={onClose} className="px-3 py-3 rounded-xl text-white hover:bg-white/10">Pricing</NavLink>
-            <hr className="border-white/10 my-2" />
-            <a
-              href="https://www.linkedin.com/in/starkbbk"
-              target="_blank"
-              rel="noreferrer"
-              className="flex items-center gap-3 px-3 py-3 rounded-xl text-white hover:bg-white/10"
-            >
-              <span className="shrink-0 grid place-items-center w-10 h-10 rounded-xl bg-white/10 ring-1 ring-white/15">
-                <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
-                  <path fill="#0A66C2" d="M22.225 0H1.771C.792 0 0 .771 0 1.723v20.554C0 23.229.792 24 1.771 24h20.451C23.2 24 24 23.229 24 22.277V1.723C24 .771 23.2 0 22.225 0zM7.119 20.452H3.558V9h3.561v11.452zM5.338 7.433a2.066 2.066 0 1 1 0-4.133 2.066 2.066 0 0 1 0 4.133zM20.447 20.452h-3.554v-5.569c0-1.328-.024-3.036-1.852-3.036-1.853 0-2.136 1.447-2.136 2.944v5.661H9.352V9h3.414v1.561h.047c.476-.9 1.637-1.852 3.368-1.852 3.6 0 4.266 2.37 4.266 5.456v6.287z"/>
-                </svg>
-              </span>
-              <span className="text-base">LinkedIn</span>
-            </a>
-            <a
-              href="https://github.com/starkbbk"
-              target="_blank"
-              rel="noreferrer"
-              className="flex items-center gap-3 px-3 py-3 rounded-xl text-white hover:bg-white/10"
-            >
-              <span className="shrink-0 grid place-items-center w-10 h-10 rounded-xl bg-white/10 ring-1 ring-white/15">
-                <img src="https://cdn.simpleicons.org/github/ffffff" width="22" height="22" alt="" />
-              </span>
-              <span className="text-base">GitHub</span>
-            </a>
+
+          <div className="grow overflow-y-auto p-6 space-y-4 pb-[max(24px,env(safe-area-inset-bottom))] overscroll-contain">
+            <div className="grid gap-4">
+              <NavLink to="/" onClick={onClose} className="text-lg text-white hover:underline">Home</NavLink>
+              <NavLink to="/about" onClick={onClose} className="text-lg text-white hover:underline">About</NavLink>
+              <NavLink to="/pricing" onClick={onClose} className="text-lg text-white hover:underline">Pricing</NavLink>
+            </div>
+
+            <hr className="my-2 border-white/10" />
+
+            <div className="grid gap-3">
+              <a
+                href="https://www.linkedin.com/in/starkbbk"
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center gap-3 px-3 py-3 rounded-xl text-white hover:bg-white/10 transition-colors"
+              >
+                <span aria-hidden className="shrink-0 grid place-items-center w-10 h-10 rounded-xl bg-white/10 ring-1 ring-white/15">
+                  <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
+                    <path fill="#0A66C2" d="M22.225 0H1.771C.792 0 0 .771 0 1.723v20.554C0 23.229.792 24 1.771 24h20.451C23.2 24 24 23.229 24 22.277V1.723C24 .771 23.2 0 22.225 0zM7.119 20.452H3.558V9h3.561v11.452zM5.338 7.433a2.066 2.066 0 1 1 0-4.133 2.066 2.066 0 0 1 0 4.133zM20.447 20.452h-3.554v-5.569c0-1.328-.024-3.036-1.852-3.036-1.853 0-2.136 1.447-2.136 2.944v5.661H9.352V9h3.414v1.561h.047c.476-.9 1.637-1.852 3.368-1.852 3.6 0 4.266 2.37 4.266 5.456v6.287z"/>
+                  </svg>
+                </span>
+                <span className="text-base">LinkedIn</span>
+              </a>
+
+              <a
+                href="https://github.com/starkbbk"
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center gap-3 px-3 py-3 rounded-xl text-white hover:bg-white/10 transition-colors"
+              >
+                <span className="shrink-0 grid place-items-center w-10 h-10 rounded-xl bg-white/10 ring-1 ring-white/15">
+                  <img src="https://cdn.simpleicons.org/github/ffffff" width="22" height="22" alt="" />
+                </span>
+                <span className="text-base">GitHub</span>
+              </a>
+            </div>
           </div>
         </div>
       </div>
