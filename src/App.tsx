@@ -549,8 +549,8 @@ function Home() {
                 <ProductCard
                   item={item}
                   score={item.score}
-                  label={`Picture ${visibleIndex + 1}`}
-                  onSelect={() => { document.title = `Picture ${visibleIndex + 1}` }}
+                  label={`Image ${visibleIndex + 1}`}
+                  onSelect={() => { document.title = `Image ${visibleIndex + 1}` }}
                 />
               </Reveal>
             ))}
@@ -747,97 +747,208 @@ function Pricing() {
  * NAV, FOOTER, SHELL
  * -------------------- */
 function Navbar() {
-  const linkBase = 'px-3 py-2 rounded-xl text-sm md:text-[15px] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40'
-  const linkActive = 'text-white bg-white/15'
-  const linkIdle   = 'text-white/85 hover:text-white hover:bg-white/10'
-  const [open, setOpen] = React.useState(false)
+  const linkBase =
+    'px-3 py-2 rounded-xl text-sm md:text-[15px] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40';
+  const linkActive = 'text-white bg-white/15';
+  const linkIdle = 'text-white/85 hover:text-white hover:bg-white/10';
+
+  const [open, setOpen] = React.useState(false);
+
+  // lock body scroll when menu is open (mobile)
   React.useEffect(() => {
-    if (!open) return
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false) }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [open])
+    const root = document.documentElement;
+    if (open) root.classList.add('overflow-hidden');
+    else root.classList.remove('overflow-hidden');
+    return () => root.classList.remove('overflow-hidden');
+  }, [open]);
+
+  // Esc closes the sheet
+  React.useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open]);
+
   return (
-    <header className="sticky top-0 z-[1200] px-4 sm:px-6 lg:px-8 py-3">
-      <div className="glass-strong px-3 py-2 rounded-2xl flex items-center justify-between overflow-x-hidden">
-        <Link to="/" className="text-lg md:text-xl font-semibold tracking-tight">
-          Visual Product Matcher
-        </Link>
-        <nav className="hidden md:flex items-center gap-2">
-          <div className="flex items-center gap-2">
+    <>
+      <header className="sticky top-0 z-[1200] px-4 sm:px-6 lg:px-8 py-3">
+        <div className="glass-strong px-3 py-2 rounded-2xl flex items-center justify-between">
+          <Link to="/" className="text-lg md:text-xl font-semibold tracking-tight">
+            Visual Product Matcher
+          </Link>
+
+          {/* desktop nav */}
+          <nav className="hidden md:flex items-center gap-2">
             <NavLink to="/" className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkIdle}`}>
               Home
             </NavLink>
-            <NavLink to="/about" className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkIdle}`}>About</NavLink>
-            <NavLink to="/pricing" className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkIdle}`}>Pricing</NavLink>
-          </div>
-          <div className="relative">
-            <button onClick={() => setOpen((v) => !v)} className={`${linkBase} ${linkIdle}`}>Contact ▾</button>
-            {open &&
-              createPortal(
-                <>
-                  <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-[1300]" onClick={() => setOpen(false)} />
-                  <div className="fixed inset-0 z-[1400] flex items-center justify-center p-4">
-                    <div className="w-[min(95vw,560px)] rounded-2xl bg-slate-900/85 backdrop-blur-xl ring-1 ring-white/15 shadow-2xl p-6">
-                      <h3 className="text-2xl font-semibold mb-4">Contact</h3>
-                      <div className="grid gap-3">
-                        <a href="https://www.linkedin.com/in/starkbbk" target="_blank" rel="noreferrer" className="flex items-center gap-3 px-3 py-3 rounded-xl text-white hover:bg-white/10 transition-colors">
-                          <span aria-hidden className="shrink-0 grid place-items-center w-10 h-10 rounded-xl bg-white/10 ring-1 ring-white/15">
-                            <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
-                              <path fill="#0A66C2" d="M22.225 0H1.771C.792 0 0 .771 0 1.723v20.554C0 23.229.792 24 1.771 24h20.451C23.2 24 24 23.229 24 22.277V1.723C24 .771 23.2 0 22.225 0zM7.119 20.452H3.558V9h3.561v11.452zM5.338 7.433a2.066 2.066 0 1 1 0-4.133 2.066 2.066 0 0 1 0 4.133zM20.447 20.452h-3.554v-5.569c0-1.328-.024-3.036-1.852-3.036-1.853 0-2.136 1.447-2.136 2.944v5.661H9.352V9h3.414v1.561h.047c.476-.9 1.637-1.852 3.368-1.852 3.6 0 4.266 2.37 4.266 5.456v6.287z"/>
-                            </svg>
-                          </span>
-                          <span className="text-base">LinkedIn</span>
-                        </a>
-                        <a href="https://github.com/starkbbk" target="_blank" rel="noreferrer" className="flex items-center gap-3 px-3 py-3 rounded-xl text-white hover:bg-white/10 transition-colors">
-                          <span aria-hidden className="shrink-0 grid place-items-center w-10 h-10 rounded-xl bg-white/10 ring-1 ring-white/15">
-                            <img src="https://cdn.simpleicons.org/github/ffffff" width="22" height="22" alt="" />
-                          </span>
-                          <span className="text-base">GitHub</span>
-                        </a>
-                        <a href="https://leetcode.com/u/starkbbk/" target="_blank" rel="noreferrer" className="flex items-center gap-3 px-3 py-3 rounded-xl text-white hover:bg-white/10 transition-colors">
-                          <span className="shrink-0 grid place-items-center w-10 h-10 rounded-xl bg-white/10 ring-1 ring-white/15">
-                            <img src="https://cdn.simpleicons.org/leetcode/F89F1B" width="22" height="22" alt="" />
-                          </span>
-                          <span className="text-base">LeetCode</span>
-                        </a>
-                        <a href="http://instagram.com/starkbbk/" target="_blank" rel="noreferrer" className="flex items-center gap-3 px-3 py-3 rounded-xl text-white hover:bg-white/10 transition-colors">
-                          <span className="shrink-0 grid place-items-center w-10 h-10 rounded-xl bg-white/10 ring-1 ring-white/15">
-                            <img src="https://cdn.simpleicons.org/instagram/E4405F" width="22" height="22" alt="" />
-                          </span>
-                          <span className="text-base">Instagram</span>
-                        </a>
-                      </div>
-                      <div className="flex justify-end mt-5">
-                        <button className="btn-glass text-base px-4 py-2" onClick={() => setOpen(false)}>Close</button>
-                      </div>
-                    </div>
-                  </div>
-                </>,
-                document.body
-              )}
-          </div>
-        </nav>
-      </div>
-    </header>
-  )
+            <NavLink to="/about" className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkIdle}`}>
+              About
+            </NavLink>
+            <NavLink to="/pricing" className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkIdle}`}>
+              Pricing
+            </NavLink>
+            <a href="#contact" className={`${linkBase} ${linkIdle}`}>Contact</a>
+          </nav>
+
+          {/* mobile hamburger */}
+          <button
+            aria-label="Open menu"
+            onClick={() => setOpen(true)}
+            className="md:hidden inline-flex items-center justify-center rounded-xl bg-white/20 ring-1 ring-white/25 text-white w-11 h-11"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      {/* mobile overlay menu (portal to body) */}
+      {open &&
+        createPortal(
+          <>
+            <div className="fixed inset-0 z-[1300] bg-slate-950/70 backdrop-blur-sm" onClick={() => setOpen(false)} />
+            <div className="fixed inset-0 z-[1400] flex">
+              <div className="ml-auto h-full w-full max-w-md bg-slate-900 text-slate-100 shadow-2xl
+                              pt-safe pb-[calc(env(safe-area-inset-bottom)+24px)] overflow-y-auto">
+                <div className="px-6 py-5 flex items-center justify-between">
+                  <h2 className="text-xl font-semibold">Menu</h2>
+                  <button
+                    aria-label="Close menu"
+                    onClick={() => setOpen(false)}
+                    className="inline-flex items-center rounded-xl bg-white/10 px-3 py-1.5 ring-1 ring-white/20"
+                  >
+                    Close
+                  </button>
+                </div>
+
+                <nav className="px-4 pb-6 grid gap-2 text-lg">
+                  <a href="/" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 hover:bg-white/10">Home</a>
+                  <a href="/about" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 hover:bg-white/10">About</a>
+                  <a href="/pricing" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 hover:bg-white/10">Pricing</a>
+                  <a href="#contact" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 hover:bg-white/10">Contact</a>
+                </nav>
+
+                <div className="px-4 border-t border-white/10 pt-5 grid gap-3">
+                  <a href="https://www.linkedin.com/in/starkbbk" target="_blank" rel="noreferrer" className="rounded-lg px-3 py-2 bg-white/10 ring-1 ring-white/15">LinkedIn</a>
+                  <a href="https://github.com/starkbbk" target="_blank" rel="noreferrer" className="rounded-lg px-3 py-2 bg-white/10 ring-1 ring-white/15">GitHub</a>
+                </div>
+              </div>
+            </div>
+          </>,
+          document.body
+        )}
+    </>
+  );
+}
+function Stars({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  return (
+    <div className="flex gap-1" aria-label="Rate this app">
+      {[1, 2, 3, 4, 5].map((n) => (
+        <button
+          key={n}
+          type="button"
+          onClick={() => onChange(n)}
+          className="p-1"
+          aria-label={`${n} star${n > 1 ? 's' : ''}`}
+          title={`${n} star${n > 1 ? 's' : ''}`}
+        >
+          <svg
+            className={`h-7 w-7 ${n <= value ? 'fill-yellow-400' : 'fill-transparent'} stroke-yellow-400`}
+            viewBox="0 0 24 24"
+            strokeWidth="2"
+          >
+            <path d="M12 17.3l-6.16 3.64 1.78-7.64L2 8.36l7.72-.66L12 0.5l2.28 7.2 7.72.66-5.62 4.94 1.78 7.64z" />
+          </svg>
+        </button>
+      ))}
+    </div>
+  );
 }
 
 function Footer() {
-  const reviews = [
-    { name: 'Aarav Mehta', role: 'E-commerce lead', rating: 4.9, text: 'Matched thousands of product photos without any server setup. The frosted UI is a bonus.' },
-    { name: 'Sana Kapoor', role: 'Design Ops', rating: 4.8, text: 'Drag a pic in, get similar shots immediately. The local-only processing is great for privacy.' },
-    { name: 'Dev Sharma', role: 'Frontend Engineer', rating: 5.0, text: 'CLIP + MobileNet fallback makes it feel instant. Works even on my older laptop.' },
-  ]
+  const CONTACT_EMAIL = 'starkbbk@gmail.com';
+  const RATING_KEY = 'vpm:userRating';
+  const [rating, setRating] = React.useState<number>(0);
+  const [sent, setSent] = React.useState(false);
+
+  React.useEffect(() => {
+    const saved = Number(localStorage.getItem(RATING_KEY) || 0);
+    if (saved) setRating(saved);
+  }, []);
+
+  function handleRate(v: number) {
+    setRating(v);
+    localStorage.setItem(RATING_KEY, String(v));
+  }
+
+  function submitContact(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const data = new FormData(e.currentTarget);
+    const name = String(data.get('name') || '');
+    const email = String(data.get('email') || '');
+    const message = String(data.get('message') || '');
+    const subject = encodeURIComponent(`VPM Contact from ${name || 'Anonymous'}`);
+    const body = encodeURIComponent(`From: ${name}\nEmail: ${email}\n\n${message}\n\nRating: ${rating || 'N/A'}★`);
+    window.location.href = `mailto:${CONTACT_EMAIL}?subject=${subject}&body=${body}`;
+    setSent(true);
+    e.currentTarget.reset();
+  }
+
   return (
-    <footer className="relative z-50 mt-10 md:mt-14 pb-12">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <p className="text-center text-xs text-white/70 mt-8">
+    <footer id="contact" className="relative z-50 mt-10 md:mt-14 pb-12 border-t border-white/10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        <div className="grid gap-10 md:gap-12 lg:gap-16 md:grid-cols-2">
+          <section className="rounded-2xl bg-white/5 ring-1 ring-white/10 p-6">
+            <h3 className="text-white text-xl font-semibold">Rate your experience</h3>
+            <p className="text-slate-300 mt-1">Help us improve by leaving a quick rating.</p>
+            <div className="mt-4">
+              <Stars value={rating} onChange={handleRate} />
+              {rating > 0 && (
+                <p className="mt-2 text-slate-300">
+                  Thanks! You rated this <span className="font-semibold">{rating} / 5</span>.
+                </p>
+              )}
+            </div>
+          </section>
+
+          <section className="rounded-2xl bg-white/5 ring-1 ring-white/10 p-6">
+            <h3 className="text-white text-xl font-semibold">Contact us</h3>
+            <p className="text-slate-300 mt-1">Have feedback or a feature request? Send us a message.</p>
+            <form onSubmit={submitContact} className="mt-4 grid gap-3">
+              <div className="grid gap-2">
+                <label className="text-sm text-slate-300">Name</label>
+                <input name="name" type="text" className="rounded-xl bg-slate-900/50 border border-white/10 px-3 py-2 text-white placeholder:text-slate-500" placeholder="Your name" />
+              </div>
+              <div className="grid gap-2">
+                <label className="text-sm text-slate-300">Email</label>
+                <input name="email" type="email" required className="rounded-xl bg-slate-900/50 border border-white/10 px-3 py-2 text-white placeholder:text-slate-500" placeholder="you@example.com" />
+              </div>
+              <div className="grid gap-2">
+                <label className="text-sm text-slate-300">Message</label>
+                <textarea name="message" required rows={4} className="rounded-xl bg-slate-900/50 border border-white/10 px-3 py-2 text-white placeholder:text-slate-500 resize-y" placeholder="How can we help?" />
+              </div>
+              <div className="flex items-center gap-3">
+                <button type="submit" className="inline-flex items-center rounded-xl bg-white/90 text-slate-900 px-4 py-2 font-medium hover:bg-white">
+                  Send
+                </button>
+                {sent && <span className="text-sm text-green-300">Thanks! Your email client should open.</span>}
+              </div>
+              <p className="text-xs text-slate-400">
+                or email us directly: <a className="underline" href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>
+              </p>
+            </form>
+          </section>
+        </div>
+
+        <p className="text-center text-xs text-white/70 mt-10">
           Built with React, Vite &amp; Tailwind. Similarity: CLIP (transformers.js) with MobileNet fallback + COCO-SSD. Catalog via precomputed embeddings or local compute.
         </p>
       </div>
     </footer>
-  )
+  );
 }
 
 function AppShell() {
