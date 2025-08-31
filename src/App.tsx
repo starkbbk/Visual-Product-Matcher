@@ -898,7 +898,7 @@ function Footer() {
   }
 
   return (
-    <footer id="contact" className="relative z-50 mt-10 md:mt-14 pb-12 border-t border-white/10">
+    <footer id="contact" className="relative z-50 mt-10 md:mt-14 pb-[calc(env(safe-area-inset-bottom,0px)+1.25rem)] border-t border-white/10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <div className="grid gap-10 md:gap-12 lg:gap-16 md:grid-cols-2">
           <section className="rounded-2xl bg-white/5 ring-1 ring-white/10 p-6">
@@ -954,11 +954,14 @@ function Footer() {
 function AppShell() {
   const location = useLocation()
   return (
-    <div className="min-h-screen bg-aurora text-slate-100 overflow-x-hidden">
+    <div className="min-h-[100svh] bg-aurora text-slate-100 overflow-x-hidden">
       <Snowfall enabled density={0.8} zIndex={1} />
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[2000] bg-white/90 text-slate-900 px-3 py-2 rounded-md">Skip to content</a>
       <Navbar />
-      <main id="main" className="relative z-[30] max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8 flex flex-col gap-6">
+      <main
+        id="main"
+        className="relative z-[30] max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8 flex flex-col gap-6 pb-[calc(env(safe-area-inset-bottom,0px)+4.5rem)] md:pb-12"
+      >
         <div className={location.pathname === '/' ? '' : 'hidden'}>
           <Home />
         </div>
